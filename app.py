@@ -447,6 +447,14 @@ def main():
                 st.write(f"**{name}**")
                 st.caption(f"Lat: {lat_ex}, Lon: {lon_ex}")
 
+# Ensure main() is called - Streamlit Cloud expects this
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        # Fallback error display if main() fails
+        st.error(f"Application error: {str(e)}")
+        st.info("Please check the logs for more details.")
+        import traceback
+        st.code(traceback.format_exc())
 
