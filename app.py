@@ -28,7 +28,8 @@ def get_models():
             # Don't import hybrid_model yet - it will import TensorFlow
             _HybridSARIMALSTM = None  # Will be loaded on demand
         except Exception as e:
-            st.error(f"Error loading data fetcher: {e}")
+            # Don't use st.error here - Streamlit might not be initialized yet
+            print(f"Error loading data fetcher: {e}")
             return None, None
         _models_loaded = True
     
@@ -42,7 +43,8 @@ def get_hybrid_model():
             from hybrid_model import HybridSARIMALSTM
             _HybridSARIMALSTM = HybridSARIMALSTM
         except Exception as e:
-            st.error(f"Error loading hybrid model: {e}")
+            # Error will be shown in UI when this is called
+            print(f"Error loading hybrid model: {e}")
             return None
     return _HybridSARIMALSTM
 
@@ -104,15 +106,11 @@ def get_fetcher():
     return NOAADataFetcher()
 
 def main():
-    # Header
+    # Header - render immediately to pass health check
     st.markdown('<h1 class="main-header">🌤️ Hybrid Weather Forecast</h1>', unsafe_allow_html=True)
     st.markdown('<p style="text-align: center; color: #666; font-size: 1.1rem;">SARIMA-LSTM Model for 7-Day Weather Predictions</p>', unsafe_allow_html=True)
     
-    # Check if data fetcher can be loaded (lightweight, no TensorFlow)
-    NOAADataFetcher, _ = get_models()
-    if NOAADataFetcher is None:
-        st.error("⚠️ Unable to load data fetcher. Please check the logs.")
-        return
+    # Don't check models here - let it fail gracefully when actually used
     
     # Sidebar
     with st.sidebar:
