@@ -12,17 +12,39 @@ import time
 import warnings
 warnings.filterwarnings('ignore')
 
-# Lazy imports to speed up startup
-@st.cache_resource
+# Lazy imports to speed up startup - don't load until actually needed
+_models_loaded = False
+_NOAADataFetcher = None
+_HybridSARIMALSTM = None
+
 def get_models():
-    """Lazy load models to speed up app startup"""
-    try:
-        from noaa_api import NOAADataFetcher
-        from hybrid_model import HybridSARIMALSTM
-        return NOAADataFetcher, HybridSARIMALSTM
-    except Exception as e:
-        st.error(f"Error loading models: {e}")
-        return None, None
+    """Lazy load models to speed up app startup - only when actually needed"""
+    global _models_loaded, _NOAADataFetcher, _HybridSARIMALSTM
+    
+    if not _models_loaded:
+        try:
+            from noaa_api import NOAADataFetcher
+            _NOAADataFetcher = NOAADataFetcher
+            # Don't import hybrid_model yet - it will import TensorFlow
+            _HybridSARIMALSTM = None  # Will be loaded on demand
+        except Exception as e:
+            st.error(f"Error loading data fetcher: {e}")
+            return None, None
+        _models_loaded = True
+    
+    return _NOAADataFetcher, _HybridSARIMALSTM
+
+def get_hybrid_model():
+    """Load hybrid model only when training is requested"""
+    global _HybridSARIMALSTM
+    if _HybridSARIMALSTM is None:
+        try:
+            from hybrid_model import HybridSARIMALSTM
+            _HybridSARIMALSTM = HybridSARIMALSTM
+        except Exception as e:
+            st.error(f"Error loading hybrid model: {e}")
+            return None
+    return _HybridSARIMALSTM
 
 # Page configuration
 st.set_page_config(
@@ -86,10 +108,10 @@ def main():
     st.markdown('<h1 class="main-header">🌤️ Hybrid Weather Forecast</h1>', unsafe_allow_html=True)
     st.markdown('<p style="text-align: center; color: #666; font-size: 1.1rem;">SARIMA-LSTM Model for 7-Day Weather Predictions</p>', unsafe_allow_html=True)
     
-    # Check if models can be loaded
-    NOAADataFetcher, HybridSARIMALSTM = get_models()
-    if NOAADataFetcher is None or HybridSARIMALSTM is None:
-        st.error("⚠️ Unable to load required models. Please check the logs.")
+    # Check if data fetcher can be loaded (lightweight, no TensorFlow)
+    NOAADataFetcher, _ = get_models()
+    if NOAADataFetcher is None:
+        st.error("⚠️ Unable to load data fetcher. Please check the logs.")
         return
     
     # Sidebar
@@ -218,10 +240,10 @@ def main():
             progress_bar.progress(60)
             status_text.text("Training hybrid SARIMA-LSTM model...")
             
-            # Initialize and train model (lazy loaded)
-            _, HybridSARIMALSTM_class = get_models()
+            # Initialize and train model (lazy loaded - only now import TensorFlow)
+            HybridSARIMALSTM_class = get_hybrid_model()
             if HybridSARIMALSTM_class is None:
-                st.error("Unable to load model classes")
+                st.error("Unable to load model classes. TensorFlow may be initializing...")
                 return
             model = HybridSARIMALSTM_class(
                 sarima_order=(sarima_p, sarima_d, sarima_q),
