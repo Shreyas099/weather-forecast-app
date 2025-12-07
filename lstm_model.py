@@ -4,6 +4,11 @@ Handles nonlinear patterns in residual time series
 """
 import pandas as pd
 import numpy as np
+import os
+# Optimize TensorFlow for CPU and reduce startup time
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Suppress TensorFlow info/warnings
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'  # Disable oneDNN optimizations for faster startup
+
 from tensorflow import keras
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense, Dropout

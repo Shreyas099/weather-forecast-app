@@ -9,10 +9,20 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from datetime import datetime, timedelta
 import time
-from noaa_api import NOAADataFetcher
-from hybrid_model import HybridSARIMALSTM
 import warnings
 warnings.filterwarnings('ignore')
+
+# Lazy imports to speed up startup
+@st.cache_resource
+def get_models():
+    """Lazy load models to speed up app startup"""
+    try:
+        from noaa_api import NOAADataFetcher
+        from hybrid_model import HybridSARIMALSTM
+        return NOAADataFetcher, HybridSARIMALSTM
+    except Exception as e:
+        st.error(f"Error loading models: {e}")
+        return None, None
 
 # Page configuration
 st.set_page_config(
@@ -64,15 +74,23 @@ if 'forecasts' not in st.session_state:
 if 'data_cache' not in st.session_state:
     st.session_state.data_cache = {}
 
-# Initialize API fetcher
-@st.cache_resource
+# Initialize API fetcher (lazy loaded)
 def get_fetcher():
+    NOAADataFetcher, _ = get_models()
+    if NOAADataFetcher is None:
+        return None
     return NOAADataFetcher()
 
 def main():
     # Header
     st.markdown('<h1 class="main-header">🌤️ Hybrid Weather Forecast</h1>', unsafe_allow_html=True)
     st.markdown('<p style="text-align: center; color: #666; font-size: 1.1rem;">SARIMA-LSTM Model for 7-Day Weather Predictions</p>', unsafe_allow_html=True)
+    
+    # Check if models can be loaded
+    NOAADataFetcher, HybridSARIMALSTM = get_models()
+    if NOAADataFetcher is None or HybridSARIMALSTM is None:
+        st.error("⚠️ Unable to load required models. Please check the logs.")
+        return
     
     # Sidebar
     with st.sidebar:
@@ -95,6 +113,9 @@ def main():
             
             if location_name:
                 fetcher = get_fetcher()
+                if fetcher is None:
+                    st.error("Unable to initialize data fetcher")
+                    st.stop()
                 with st.spinner("Finding location..."):
                     coords = fetcher.get_location_data(location_name)
                     if coords:
@@ -144,6 +165,9 @@ def main():
     if train_button:
         with st.spinner("Fetching weather data..."):
             fetcher = get_fetcher()
+            if fetcher is None:
+                st.error("Unable to initialize data fetcher")
+                st.stop()
             
             # Get station ID
             station_id = fetcher.get_station_id(lat, lon)
@@ -194,8 +218,12 @@ def main():
             progress_bar.progress(60)
             status_text.text("Training hybrid SARIMA-LSTM model...")
             
-            # Initialize and train model
-            model = HybridSARIMALSTM(
+            # Initialize and train model (lazy loaded)
+            _, HybridSARIMALSTM_class = get_models()
+            if HybridSARIMALSTM_class is None:
+                st.error("Unable to load model classes")
+                return
+            model = HybridSARIMALSTM_class(
                 sarima_order=(sarima_p, sarima_d, sarima_q),
                 sarima_seasonal_order=(1, 1, 1, seasonal_period),
                 lstm_sequence_length=lstm_sequence,
