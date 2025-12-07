@@ -38,7 +38,30 @@ streamlit run app.py
 
 4. Open your browser to `http://localhost:8501`
 
-## 🚢 Deployment on Hugging Face Spaces
+## 🚢 Deployment Options
+
+### Option 1: Streamlit Cloud (⭐ Recommended - Easiest)
+
+**Best for**: Quick deployment, zero configuration
+
+1. **Push to GitHub** (if not already done):
+   ```bash
+   git push origin main
+   ```
+
+2. **Deploy on Streamlit Cloud**:
+   - Go to: https://share.streamlit.io/
+   - Sign in with GitHub
+   - Click "New app"
+   - Select repository: `Shreyas099/weather-forecast-app`
+   - Main file: `app.py`
+   - Click "Deploy!"
+
+3. **Your app will be live** at: `https://weather-forecast-app.streamlit.app`
+
+See `DEPLOYMENT_STREAMLIT_CLOUD.md` for detailed instructions.
+
+### Option 2: Hugging Face Spaces
 
 ### Step 1: Create a Hugging Face Account
 1. Go to [huggingface.co](https://huggingface.co) and create an account
